@@ -224,7 +224,7 @@ const FileEndpoint = struct {
         try req.sendBody(body);
     }
 
-    fn try_get(self: *Self, ally: Allocator, arena: Allocator, ctx: *Context, req: zap.Request) Error!void {
+    fn tryGet(self: *Self, ally: Allocator, arena: Allocator, ctx: *Context, req: zap.Request) Error!void {
         _ = ally;
         try req.setHeader("server", "fileserver.minx");
         log.debug("QUERY: {s}", .{req.query orelse "無"});
@@ -275,7 +275,6 @@ const FileEndpoint = struct {
 
         const highlight_lang = if (filetype) |ft| ft.highlightPandocLanguage() else null;
         if (highlight_lang) |language| {
-            log.info("pandoc language: {s}", .{language});
             return Self.highlightFile(arena, ctx, language, path, filesystem_path, req);
         }
 
@@ -285,7 +284,7 @@ const FileEndpoint = struct {
     pub fn get(self: *@This(), ally: Allocator, ctx: *Context, req: zap.Request) !void {
         var arena = std.heap.ArenaAllocator.init(ally);
         defer arena.deinit();
-        return self.try_get(ally, arena.allocator(), ctx, req);
+        return self.tryGet(ally, arena.allocator(), ctx, req);
     }
 
     fn stub(self: *@This(), ally: Allocator, ctx: *Context, r: zap.Request) !void {
