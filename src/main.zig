@@ -121,7 +121,7 @@ const FileEndpoint = struct {
     }
 
     fn send_404(_: *Self, req: zap.Request) !void {
-        try req.setHeader("content-type", "text/plain; encoding=utf-8");
+        try req.setHeader("content-type", "text/plain; charset=utf-8");
         req.setStatus(.not_found);
         try req.sendBody(
             \\404 not found
@@ -221,6 +221,7 @@ const FileEndpoint = struct {
                 .code = result.stdout,
             },
         );
+        try req.setHeader("content-type", "text/html; charset=utf-8");
         try req.sendBody(body);
     }
 

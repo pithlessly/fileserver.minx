@@ -218,5 +218,7 @@ pub fn serveDirectoryIndex(
         \\</body>
         \\</html>
     );
+
+    try req.setHeader("content-type", "text/html; charset=utf-8");
     try req.sendBody(buf.items);
 }
