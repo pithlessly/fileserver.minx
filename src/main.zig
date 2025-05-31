@@ -345,7 +345,7 @@ pub fn main() !void {
     };
 
     var name_map_arena = std.heap.ArenaAllocator.init(ally);
-    errdefer name_map_arena.deinit();
+    defer name_map_arena.deinit();
     const name_map = try NameMap.init(name_map_arena.allocator());
     log.info("successfully initialized name_map", .{});
 
