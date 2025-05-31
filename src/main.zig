@@ -193,7 +193,7 @@ const FileEndpoint = struct {
             },
             .max_output_bytes = 4 * 1024 * 1024,
         }) catch |err| {
-            log.err("process.Child.run() returned {s}", .{@errorName(err)});
+            log.err("while highlighting code, pandoc returned {s}", .{@errorName(err)});
             return error.Pandoc;
         };
         const body = try std.fmt.allocPrint(
@@ -223,6 +223,31 @@ const FileEndpoint = struct {
         );
         try req.setHeader("content-type", "text/html; charset=utf-8");
         try req.sendBody(body);
+    }
+
+    fn renderPandoc(
+        arena: Allocator,
+        pandoc_format: []const u8,
+        filesystem_path: []const u8,
+        req: zap.Request,
+    ) Error!void {
+        const result = std.process.Child.run(.{
+            .allocator = arena,
+            .argv = &[_][]const u8{
+                "pandoc",
+                "--from",
+                pandoc_format,
+                "--to",
+                "html",
+                filesystem_path,
+                "--standalone",
+            },
+        }) catch |err| {
+            log.err("while rendering document, pandoc returned {s}", .{@errorName(err)});
+            return error.Pandoc;
+        };
+        try req.setHeader("content-type", "text/html; charset=utf-8");
+        try req.sendBody(result.stdout);
     }
 
     fn tryGet(self: *Self, ally: Allocator, arena: Allocator, ctx: *Context, req: zap.Request) Error!void {
@@ -274,9 +299,13 @@ const FileEndpoint = struct {
         const filetype = ctx.filetypes.fileTypeFor(filesystem_path);
         log.info("successfully opened: {s} type: {any} :)", .{ filesystem_path, filetype });
 
-        const highlight_lang = if (filetype) |ft| ft.highlightPandocLanguage() else null;
-        if (highlight_lang) |language| {
-            return Self.highlightFile(arena, ctx, language, path, filesystem_path, req);
+        if (filetype) |ft| {
+            if (ft.highlightPandocLanguage()) |language| {
+                return Self.highlightFile(arena, ctx, language, path, filesystem_path, req);
+            }
+            if (ft.pandocDocumentFormat()) |pandoc_format| {
+                return Self.renderPandoc(arena, pandoc_format, filesystem_path, req);
+            }
         }
 
         try req.sendFile(filesystem_path);

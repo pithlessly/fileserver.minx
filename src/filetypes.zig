@@ -121,6 +121,15 @@ const FileType = enum {
             else => null,
         };
     }
+
+    pub fn pandocDocumentFormat(self: FileType) ?[]const u8 {
+        return switch (self) {
+            .markdown => "markdown",
+            .rst => "rst",
+            .org => "org",
+            else => null,
+        };
+    }
 };
 
 const FileTypeAssoc = struct {
