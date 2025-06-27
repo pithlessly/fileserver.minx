@@ -121,8 +121,13 @@ const FileEndpoint = struct {
         _ = self;
     }
 
-    fn send_404(_: *Self, req: zap.Request) !void {
+    fn setHeadersToDisplayAsUtf8PlainTextInBrowser(req: zap.Request) !void {
         try req.setHeader("content-type", "text/plain; charset=utf-8");
+        try req.setHeader("content-disposition", "inline");
+    }
+
+    fn send_404(_: *Self, req: zap.Request) !void {
+        try setHeadersToDisplayAsUtf8PlainTextInBrowser(req);
         req.setStatus(.not_found);
         try req.sendBody(
             \\404 not found
@@ -300,6 +305,8 @@ const FileEndpoint = struct {
         const filetype = ctx.name_map.fileTypeFor(filesystem_path);
         log.info("successfully opened: {s} type: {any} :)", .{ filesystem_path, filetype });
 
+        var known_content_type = false;
+
         if (filetype) |ft| {
             if (ft.highlightPandocLanguage()) |language| {
                 return Self.highlightFile(arena, ctx, language, path, filesystem_path, req);
@@ -307,8 +314,27 @@ const FileEndpoint = struct {
             if (ft.pandocDocumentFormat()) |pandoc_format| {
                 return Self.renderPandoc(arena, pandoc_format, filesystem_path, req);
             }
+            switch (ft) {
+                .text_utf8 => {
+                    known_content_type = true;
+                    try setHeadersToDisplayAsUtf8PlainTextInBrowser(req);
+                },
+                else => {},
+            }
         }
 
+        if (!known_content_type and try filetypes.startsWithUtf8(file)) {
+            try setHeadersToDisplayAsUtf8PlainTextInBrowser(req);
+        }
+
+        // FIXME: this uses facil.io's http_sendfile2, which
+        // always automatically tries to determine content-type from
+        // the file extension.
+        // In the case that a text file has an extension already,
+        // this results in a duplicate content-type header,
+        // which is not ideal.
+        // The fix is to reimplement http_sendfile2's functionality
+        // for ourselves (including handling HTTP RANGE requests).
         try req.sendFile(filesystem_path);
     }
 

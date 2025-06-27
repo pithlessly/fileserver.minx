@@ -3,6 +3,7 @@ const std = @import("std");
 const log = @import("main.zig").log;
 
 const Allocator = std.mem.Allocator;
+const File = std.fs.File;
 
 const FileType = enum {
     // display a code listing
@@ -314,3 +315,31 @@ pub const NameMap = struct {
         return trie_node.as_fixed;
     }
 };
+
+fn isUtf8ContinuationByte(b: u8) bool {
+    return b >> 6 == 0b10;
+}
+
+pub fn startsWithUtf8(f: File) !bool {
+    var buf: [128]u8 = undefined;
+    const n_read = try f.readAll(&buf);
+    var validate_len = n_read;
+    if (n_read == buf.len) {
+        // skip incomplete characters at the end: omit up to 3 bytes
+        var i: usize = 0;
+        while (i < 3 and isUtf8ContinuationByte(buf[validate_len - 1])) {
+            i += 1;
+            validate_len -= 1;
+        }
+        if (i > 0) {
+            validate_len -= 1;
+            i += 1;
+            const leading_byte = buf[validate_len];
+            const last_character_len = std.unicode.utf8ByteSequenceLength(leading_byte) catch
+                return false;
+            if (!(last_character_len >= i))
+                return false;
+        }
+    }
+    return std.unicode.wtf8ValidateSlice(buf[0..validate_len]);
+}
