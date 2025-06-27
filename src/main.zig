@@ -172,7 +172,7 @@ const FileEndpoint = struct {
         BadPathName,
         NetworkNotFound,
         AntivirusInterference,
-    };
+    } || std.process.Child.RunError;
 
     fn highlightFile(
         arena: Allocator,
@@ -195,7 +195,7 @@ const FileEndpoint = struct {
             .max_output_bytes = 4 * 1024 * 1024,
         }) catch |err| {
             log.err("while highlighting code, pandoc returned {s}", .{@errorName(err)});
-            return error.Pandoc;
+            return err;
         };
         const body = try std.fmt.allocPrint(
             arena,
@@ -245,7 +245,7 @@ const FileEndpoint = struct {
             },
         }) catch |err| {
             log.err("while rendering document, pandoc returned {s}", .{@errorName(err)});
-            return error.Pandoc;
+            return err;
         };
         try req.setHeader("content-type", "text/html; charset=utf-8");
         try req.sendBody(result.stdout);
