@@ -6,7 +6,8 @@ const assert = std.debug.assert;
 
 const util = @import("util.zig");
 const directory_listing = @import("directory_listing.zig");
-const NameMap = @import("filetypes.zig").NameMap;
+const filetypes = @import("filetypes.zig");
+const NameMap = filetypes.NameMap;
 const htmlEscape = util.htmlEscape;
 
 pub const std_options = std.Options{
@@ -69,9 +70,9 @@ test requestPathIsValidFilePath {
 const Context = struct {
     executable_dir_path: []u8,
     artifact_dir_path: []const u8,
-    filetypes: NameMap,
+    name_map: NameMap,
 
-    fn init(ally: Allocator, filetypes: NameMap) !Context {
+    fn init(ally: Allocator, name_map: NameMap) !Context {
         const executable_dir_path = try std.fs.selfExeDirPathAlloc(ally);
         errdefer ally.free(executable_dir_path);
         const artifact_dir_path = std.fs.path.dirname(executable_dir_path).?;
@@ -79,7 +80,7 @@ const Context = struct {
         return .{
             .executable_dir_path = executable_dir_path,
             .artifact_dir_path = artifact_dir_path,
-            .filetypes = filetypes,
+            .name_map = name_map,
         };
     }
 
@@ -296,7 +297,7 @@ const FileEndpoint = struct {
             return directory_listing.serveDirectoryIndex(arena, path, filesystem_path, req);
         }
 
-        const filetype = ctx.filetypes.fileTypeFor(filesystem_path);
+        const filetype = ctx.name_map.fileTypeFor(filesystem_path);
         log.info("successfully opened: {s} type: {any} :)", .{ filesystem_path, filetype });
 
         if (filetype) |ft| {
