@@ -197,7 +197,7 @@ const FileEndpoint = struct {
                 try std.fmt.allocPrint(arena, "{s}/data/pandoc_highlight.lua", .{ctx.artifact_dir_path}),
                 filesystem_path,
             },
-            .max_output_bytes = 4 * 1024 * 1024,
+            .max_output_bytes = 64 * 1024 * 1024,
         }) catch |err| {
             log.err("while highlighting code, pandoc returned {s}", .{@errorName(err)});
             return err;
