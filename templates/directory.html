@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Index of {{ uri_path }}/</title>
+        <meta charset="utf-8">
+        <base href="{{ uri_path }}/">
+        <style>
+        h1{margin-top:0;}
+        table{font-family:monospace;border-collapse:collapse;}
+        .a{max-width:60em;overflow-x:hidden;text-overflow:ellipsis;text-wrap:nowrap;}
+        .stat{padding-left:2em;padding-right:2em;}
+        .sz{text-align:right;}
+        .e{background-color:#eaa;}
+        </style>
+    </head>
+    <body>
+        <h1>Index of {{ uri_path }}/</h1>
+        <hr>
+        <table>
+            {% if not is_root %}
+            <tr><td class="a"><a href="../?listing">../</a></td></tr>
+            {% endif %}
+            {% for entry in entries %}
+            <tr>
+                <td class="a"><a href="./{{ entry.name_encoded }}?listing">{{ entry.name }}</a></td>
+                <td class="stat">{{ entry.mtime }}</td>
+                <td class="sz">{{ entry.size }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <hr>
+    </body>
+</html>

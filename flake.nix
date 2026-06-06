@@ -35,6 +35,11 @@
       packages.default = minx-fileserver;
       devShells.default = pkgs.mkShell {
         nativeBuildInputs = [
+          pkgs.rustc
+          pkgs.cargo
+          pkgs.clippy
+          pkgs.rust-analyzer
+          pkgs.rustfmt
           pkgs.zig
           pkgs.zls
           pkgs.zon2nix
