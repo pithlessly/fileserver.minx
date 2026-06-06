@@ -366,8 +366,8 @@ pub fn main() !void {
 
     var envs = try std.process.getEnvMap(ally);
     defer envs.deinit();
-    const root_url_dir = envs.get("MINX_ROOT_URL_DIR") orelse {
-        log.err("please pass MINX_ROOT_URL_DIR", .{});
+    const root_url_dir = envs.get("MINX_FS_ROOT") orelse {
+        log.err("please pass MINX_FS_ROOT", .{});
         return error.MissingConfig;
     };
 
