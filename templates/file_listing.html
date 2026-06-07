@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>{{ path }}</title>
+        <meta charset="utf-8">
+        <link type="text/css" rel="stylesheet" href="/file_listing.css">
+    </head>
+    <body>
+        <h1>{{ path }}</h1>
+        <hr>
+        <div><pre><code>{{ file_content }}</code></pre></div>
+        {% for error in errors %}
+            <div class="e">{{ error }}</div>
+        {% endfor %}
+    </body>
+</html>

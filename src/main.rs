@@ -4,6 +4,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::Router;
 use tower_http::catch_panic::CatchPanicLayer;
+use tower_http::services::ServeFile;
 
 mod response_builder;
 use response_builder::ResponseBuilder;
@@ -15,8 +16,14 @@ use filesystem::FilesystemState;
 async fn main() -> anyhow::Result<()> {
     let filesystem_state = init_filesystem_state()?;
     let app = Router::new()
-        // .route("/",        get(|| route("head"))
-        // .route("/{*path}", get(|| async { "bar" }))
+        .route_service(
+            "/file_listing.css",
+            ServeFile::new("static/file_listing.css"),
+        )
+        .route_service(
+            "/directory_listing.css",
+            ServeFile::new("static/directory_listing.css"),
+        )
         .fallback_service(Handler::with_state(
             filesystem::filesystem,
             filesystem_state,
@@ -32,18 +39,26 @@ async fn main() -> anyhow::Result<()> {
 
 fn init_filesystem_state() -> anyhow::Result<FilesystemState> {
     let fs_root = std::env::var("MINX_FS_ROOT").map_err(|_| anyhow!("please pass MINX_FS_ROOT"))?;
+    let syntax_highlighter = arborium::Highlighter::new();
     let mut templates = minijinja::Environment::new();
     templates.set_loader(minijinja::path_loader("./templates/"));
+    let arborium_theme_css = {
+        let selector_prefix = "pre";
+        arborium_theme::builtin::dayfox().to_css(selector_prefix)
+    };
     Ok(FilesystemState {
         fs_root: std::path::PathBuf::from(fs_root).into(),
+        syntax_highlighter,
         templates,
+        arborium_theme_css,
+        max_file_listing_size: 1024 * 1024,
     })
 }
 
 #[derive(Debug)]
 struct AppError(anyhow::Error);
 
-type Result<T> = std::result::Result<T, AppError>;
+type Result<T, E = AppError> = std::result::Result<T, E>;
 
 impl<E: Into<anyhow::Error>> From<E> for AppError {
     fn from(err: E) -> Self {

@@ -15,6 +15,9 @@ use std::sync::Arc;
 use crate::ResponseBuilder;
 use crate::Result;
 
+mod file_listing;
+use file_listing::{ServeFileListingError, serve_file_listing};
+
 /// Ensure that responses of type `application/pdf` have `content-disposition: inline` header set.
 /// Used as axum middleware via `axum::middleware::map_response`.
 pub async fn ensure_pdfs_are_inline(mut response: Response) -> Response {
@@ -31,7 +34,11 @@ pub async fn ensure_pdfs_are_inline(mut response: Response) -> Response {
 #[derive(Clone)]
 pub struct FilesystemState {
     pub fs_root: Arc<Path>,
+    pub syntax_highlighter: arborium::Highlighter,
     pub templates: minijinja::Environment<'static>,
+    #[allow(dead_code)]
+    pub arborium_theme_css: String,
+    pub max_file_listing_size: u64,
 }
 
 pub async fn filesystem(
@@ -56,6 +63,7 @@ pub async fn filesystem(
     let absolute_path = state.fs_root.join(OsStr::from_bytes(
         uri_path.strip_prefix(b"/").unwrap_or(b""),
     ));
+    let uri_path_exact = str::from_utf8(&uri_path).ok();
     let uri_path: Cow<str> = String::from_utf8_lossy(&uri_path);
     let absolute_path = match absolute_path.canonicalize() {
         Ok(p) if p.starts_with(&state.fs_root) => p,
@@ -71,28 +79,28 @@ pub async fn filesystem(
             }
         }
         let is_root = absolute_path == *state.fs_root;
-        serve_directory_listing(rb, &uri_path, absolute_path, is_root)
+        serve_directory_listing(rb, uri_path, absolute_path, is_root)
     } else {
-        let mime = mime_guess::from_path(&absolute_path).first_or_text_plain();
-        if listing && mime.type_() == mime_guess::mime::TEXT {
-            Ok(error_page(
-                rb,
-                StatusCode::OK,
-                &format!(
-                    "{method}: TODO: file listing of {}",
-                    absolute_path.display()
-                ),
-            ))
-        } else {
-            Ok(serve_file(&absolute_path, request).await)
+        let result = serve_file_listing(
+            &state,
+            rb,
+            listing,
+            uri_path_exact,
+            uri_path,
+            &absolute_path,
+        );
+        match result {
+            Ok(resp) => Ok(resp),
+            Err(ServeFileListingError::Io(e)) => Err(e.into()),
+            Err(ServeFileListingError::NoListing) => Ok(serve_file(&absolute_path, request).await),
         }
     }
 }
 
-async fn serve_file(path: &Path, req: Request) -> Response {
+async fn serve_file(path: &Path, request: Request) -> Response {
     use http_body_util::BodyExt as _;
     use tower::util::ServiceExt as _;
-    let Ok(response) = ServeFile::new(path).oneshot(req).await;
+    let Ok(response) = ServeFile::new(path).oneshot(request).await;
     response.map(|body| Body::new(body.boxed_unsync()))
 }
 
@@ -116,10 +124,13 @@ struct DirEntry {
     is_dir: bool,
     name: String,
     name_encoded: String, // percent-encoded
-    mtime: String,
+    mtime: minijinja::Value,
     size: Cow<'static, str>,
 }
 
+// Sources of errors:
+// - read_dir() fails (we should have already checked that this is a directory)
+// - read_dir() returns a failing item
 fn read_entries(absolute_path: &Path) -> Result<Vec<DirEntry>> {
     let mut entries: Vec<DirEntry> = std::fs::read_dir(absolute_path)?
         .map(|entry| {
@@ -159,7 +170,13 @@ fn read_entries(absolute_path: &Path) -> Result<Vec<DirEntry>> {
                 is_dir,
                 name,
                 name_encoded,
-                mtime: mtime.unwrap_or_else(|e| format!("<span class='e'>{}</span>", e.kind())),
+                mtime: match mtime {
+                    Ok(mtime) => mtime.into(),
+                    Err(e) => minijinja::Value::from_safe_string(format!(
+                        "<span class='e'>{}</span>",
+                        e.kind()
+                    )),
+                },
                 size: size.unwrap_or("-".into()),
             })
         })

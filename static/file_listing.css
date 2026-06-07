@@ -1,0 +1,76 @@
+body{font-size:13pt;}
+h1{margin-top:0;}
+.e{background-color:#eaa;}
+pre{padding:0.5rem;}
+/* From 'dayfox'; distributed under the terms of the MIT license.
+ * https://github.com/EdenEast/nightfox.nvim
+ */
+body {
+  background-color: #f6f2ee;
+}
+pre {
+  color: #3d2b5a;
+  a-at { color: #955f61; }
+  a-co { color: #287980; }
+  a-cb { color: #287980; }
+  a-fb { color: #287980; }
+  a-f { color: #2848a9; }
+  a-fm { color: #2848a9; }
+  a-k { color: #6e33ce; }
+  a-kc { color: #6e33ce; }
+  a-ko { color: #6e33ce; }
+  a-kd { color: #6e33ce; }
+  a-ke { color: #6e33ce; }
+  a-kf { color: #6e33ce; }
+  a-ki { color: #6e33ce; }
+  a-kp { color: #6e33ce; }
+  a-kr { color: #6e33ce; }
+  a-kt { color: #6e33ce; }
+  a-ky { color: #6e33ce; }
+  a-o { color: #3d2b5a; }
+  a-pr { color: #287980; }
+  a-p { color: #824d5b; }
+  a-pb { color: #824d5b; }
+  a-pd { color: #824d5b; }
+  a-ps { color: #a440b5; }
+  a-s { color: #396847; }
+  a-ss { color: #955f61; }
+  a-tg { color: #6e33ce; }
+  a-td { color: #6e33ce; }
+  a-te { color: #6e33ce; }
+  a-t { color: #ac5402; }
+  a-tb { color: #ac5402; }
+  a-tq { color: #ac5402; }
+  a-v { color: #3d2b5a; }
+  a-vb { color: #a5222f; }
+  a-vp { color: #643f61; }
+  a-c { color: #837a72; }
+  a-cd { color: #837a72; }
+  a-m { color: #287980; }
+  a-l { color: #a440b5; }
+  a-n { color: #955f61; }
+  a-tl { color: #3d2b5a; }
+  a-em { font-style: italic; }
+  a-st { font-weight: bold; }
+  a-tu { color: #2848a9; text-decoration: underline; }
+  a-tr { color: #287980; }
+  a-se { color: #a440b5; }
+  a-tt { color: #2848a9; font-weight: bold; }
+  a-tx { text-decoration: line-through; }
+  a-sp { color: #3d2b5a; }
+  a-in { color: #6e33ce; }
+  a-sc { color: #6e33ce; }
+  a-rp { color: #6e33ce; }
+  a-cn { color: #6e33ce; }
+  a-ex { color: #6e33ce; }
+  a-pp { color: #6e33ce; }
+  a-ch { color: #396847; }
+  a-cs { color: #396847; }
+  a-vm { color: #3d2b5a; }
+  a-fd { color: #2848a9; }
+  a-tf { color: #ac5402; }
+  a-fc { color: #2848a9; }
+  a-km { color: #6e33ce; }
+  a-dr { color: #6e33ce; }
+  a-rx { color: #396847; }
+}
