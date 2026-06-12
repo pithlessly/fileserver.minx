@@ -15,7 +15,7 @@
             {% endif %}
             {% for entry in entries %}
             <tr>
-                <td class="a"><a href="./{{ entry.name_encoded }}?listing">{{ entry.name }}</a></td>
+                <td class="a"><a href="./{{ entry.name_encoded }}{{ entry.listing }}">{{ entry.name }}</a></td>
                 <td class="stat">{{ entry.mtime }}</td>
                 <td class="sz">{{ entry.size }}</td>
             </tr>

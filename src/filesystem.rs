@@ -134,7 +134,8 @@ fn serve_directory_listing(
 struct DirEntry {
     is_dir: bool,
     name: String,
-    name_encoded: String, // percent-encoded
+    name_encoded: String,  // percent-encoded
+    listing: &'static str, // either "" or "?listing"
     mtime: minijinja::Value,
     size: Cow<'static, str>,
 }
@@ -167,10 +168,16 @@ fn read_entries(absolute_path: &Path) -> Result<Vec<DirEntry>> {
                 name_encoded.push('/');
                 name.push('/');
             }
+            let listing = if !is_dir && name.ends_with(".html") {
+                ""
+            } else {
+                "?listing"
+            };
             Ok(DirEntry {
                 is_dir,
                 name,
                 name_encoded,
+                listing,
                 mtime: match mtime {
                     Ok(mtime) => mtime.into(),
                     Err(e) => minijinja::Value::from_safe_string(format!(
