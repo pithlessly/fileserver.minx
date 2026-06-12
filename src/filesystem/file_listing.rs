@@ -36,8 +36,10 @@ pub fn serve_file_listing(
             return Err(E::NoListing);
         }
         let mime = mime_guess::from_path(absolute_path).first_or_text_plain();
+        // eprintln!("{}, {:?}", absolute_path.display(), mime);
         let is_textual = mime.type_() == mime_guess::mime::TEXT
             || mime == "application/x-sh"
+            || mime == "application/vnd.lotus-screencam" // `.scm` is Scheme
             || mime == "application/xml";
         if !is_textual {
             return Err(E::NoListing);
