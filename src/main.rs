@@ -75,3 +75,17 @@ impl IntoResponse for AppError {
             .into_response()
     }
 }
+
+fn percent_encode(bytes: &[u8]) -> String {
+    percent_encoding::percent_encode(
+        bytes,
+        &const {
+            percent_encoding::NON_ALPHANUMERIC
+                .remove(b'_')
+                .remove(b'-')
+                .remove(b'.')
+                .remove(b'/')
+        },
+    )
+    .to_string()
+}

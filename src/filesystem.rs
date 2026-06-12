@@ -63,14 +63,15 @@ pub async fn filesystem(
     let absolute_path = state.fs_root.join(OsStr::from_bytes(
         uri_path.strip_prefix(b"/").unwrap_or(b""),
     ));
-    let uri_path_exact = str::from_utf8(&uri_path).ok();
-    let uri_path: Cow<str> = String::from_utf8_lossy(&uri_path);
+    let uri_path_lossy: Cow<str> = String::from_utf8_lossy(&uri_path);
+    let uri_path_lossy = trim_suffix_if_present(&uri_path_lossy, "/");
     let absolute_path = match absolute_path.canonicalize() {
-        Ok(p) if p.starts_with(&state.fs_root) => p,
-        Ok(_) => return Ok(error_page(rb, StatusCode::NOT_FOUND, &uri_path)),
-        Err(e) => return handle_io_error(rb, e, &uri_path),
+        Ok(p) => p,
+        Err(e) => return handle_io_error(rb, e, &uri_path_lossy),
     };
-    let uri_path = uri_path.strip_suffix("/").unwrap_or(&uri_path);
+    if !absolute_path.starts_with(&state.fs_root) {
+        return Ok(error_page(rb, StatusCode::NOT_FOUND, &uri_path_lossy));
+    }
     if absolute_path.is_dir() {
         if !listing {
             let index_html = absolute_path.join("index.html");
@@ -79,14 +80,14 @@ pub async fn filesystem(
             }
         }
         let is_root = absolute_path == *state.fs_root;
-        serve_directory_listing(rb, uri_path, absolute_path, is_root)
+        serve_directory_listing(rb, &uri_path, uri_path_lossy, absolute_path, is_root)
     } else {
         let result = serve_file_listing(
             &state,
             rb,
             listing,
-            uri_path_exact,
-            uri_path,
+            &uri_path,
+            uri_path_lossy,
             &absolute_path,
         );
         match result {
@@ -95,6 +96,10 @@ pub async fn filesystem(
             Err(ServeFileListingError::NoListing) => Ok(serve_file(&absolute_path, request).await),
         }
     }
+}
+
+fn trim_suffix_if_present<'a, 'b>(haystack: &'a str, needle: &'b str) -> &'a str {
+    haystack.strip_suffix(needle).unwrap_or(haystack)
 }
 
 async fn serve_file(path: &Path, request: Request) -> Response {
@@ -106,13 +111,19 @@ async fn serve_file(path: &Path, request: Request) -> Response {
 
 fn serve_directory_listing(
     rb: ResponseBuilder,
-    uri_path: &str,
+    uri_path: &[u8],
+    uri_path_lossy: &str,
     absolute_path: PathBuf,
     is_root: bool,
 ) -> Result<Response> {
     rb.ok().try_render("directory.html", || {
+        let mut uri_path_encoded = crate::percent_encode(uri_path);
+        if !uri_path_encoded.ends_with('/') {
+            uri_path_encoded.push('/');
+        }
         Ok(minijinja::context!(
-            uri_path,
+            uri_path_lossy,
+            uri_path_encoded,
             is_root,
             entries => read_entries(&absolute_path)?,
         ))
@@ -150,17 +161,7 @@ fn read_entries(absolute_path: &Path) -> Result<Vec<DirEntry>> {
                     Err(e) => (false, Err(e), None),
                 };
             let name = entry.file_name();
-            let mut name_encoded = percent_encoding::percent_encode(
-                OsStr::as_bytes(&name),
-                &const {
-                    percent_encoding::NON_ALPHANUMERIC
-                        .remove(b'_')
-                        .remove(b'-')
-                        .remove(b'.')
-                        .remove(b'/')
-                },
-            )
-            .to_string();
+            let mut name_encoded = crate::percent_encode(OsStr::as_bytes(&name));
             let mut name: String = name.to_string_lossy().to_string();
             if is_dir {
                 name_encoded.push('/');
@@ -181,9 +182,15 @@ fn read_entries(absolute_path: &Path) -> Result<Vec<DirEntry>> {
             })
         })
         .collect::<Result<_>>()?;
-    // sort lexicographically, putting directories first
-    entries.sort_by(|e1, e2| Ord::cmp(&e2.is_dir, &e1.is_dir).then(Ord::cmp(&e1.name, &e2.name)));
+    entries.sort_by(|e1, e2| Ord::cmp(&e1.order(), &e2.order()));
     Ok(entries)
+}
+
+impl DirEntry {
+    // order by name lexicographically, with directories first
+    fn order(&self) -> (bool, &str) {
+        (!self.is_dir, &self.name)
+    }
 }
 
 fn handle_io_error(rb: ResponseBuilder, err: std::io::Error, message: &str) -> Result<Response> {

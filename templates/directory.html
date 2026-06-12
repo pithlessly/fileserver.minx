@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Index of {{ uri_path }}/</title>
+        <title>Index of {{ uri_path_lossy }}/</title>
         <meta charset="utf-8">
-        <base href="{{ uri_path }}/">
+        <base href="{{ uri_path_encoded }}">
         <link type="text/css" rel="stylesheet" href="/directory_listing.css">
     </head>
     <body>
-        <h1>Index of {{ uri_path }}/</h1>
+        <h1>Index of {{ uri_path_lossy }}/</h1>
         <hr>
         <table>
             {% if not is_root %}
