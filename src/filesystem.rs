@@ -168,11 +168,12 @@ fn read_entries(absolute_path: &Path) -> Result<Vec<DirEntry>> {
                 name_encoded.push('/');
                 name.push('/');
             }
-            let listing = if !is_dir && name.ends_with(".html") {
-                ""
-            } else {
-                "?listing"
-            };
+            let listing =
+                if !is_dir && (name.ends_with(".html") || is_definitely_a_binary_format(&name)) {
+                    ""
+                } else {
+                    "?listing"
+                };
             Ok(DirEntry {
                 is_dir,
                 name,
@@ -191,6 +192,13 @@ fn read_entries(absolute_path: &Path) -> Result<Vec<DirEntry>> {
         .collect::<Result<_>>()?;
     entries.sort_by(|e1, e2| Ord::cmp(&e1.order(), &e2.order()));
     Ok(entries)
+}
+
+fn is_definitely_a_binary_format(name: &str) -> bool {
+    let Some(guess) = mime_guess::from_path(name).first() else {
+        return false;
+    };
+    guess == mime_guess::mime::APPLICATION_PDF || guess.type_() == mime_guess::mime::IMAGE
 }
 
 impl DirEntry {

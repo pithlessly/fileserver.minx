@@ -40,7 +40,8 @@ pub fn serve_file_listing(
         let is_textual = mime.type_() == mime_guess::mime::TEXT
             || mime == "application/x-sh"
             || mime == "application/vnd.lotus-screencam" // `.scm` is Scheme
-            || mime == "application/xml";
+            || mime == "application/xml"
+            || mime == "image/svg+xml";
         if !is_textual {
             return Err(E::NoListing);
         }
