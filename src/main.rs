@@ -14,6 +14,9 @@ use filesystem::FilesystemState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let ip_and_port = std::env::args().nth(1).expect("please pass [ip]:[port]");
+    let addresses: Box<[_]> = tokio::net::lookup_host(&ip_and_port).await?.collect();
+    assert!(!addresses.is_empty());
     let filesystem_state = init_filesystem_state()?;
     let app = Router::new()
         .route_service(
@@ -32,7 +35,8 @@ async fn main() -> anyhow::Result<()> {
             filesystem::ensure_pdfs_are_inline,
         ))
         .layer(CatchPanicLayer::new());
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8041").await?;
+    let listener = tokio::net::TcpListener::bind(&*addresses).await?;
+    eprintln!("listening on {ip_and_port}");
     axum::serve(listener, app).await?;
     Ok(())
 }
