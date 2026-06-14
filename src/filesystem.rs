@@ -216,7 +216,10 @@ fn is_definitely_a_binary_format(name: &str) -> bool {
     let Some(guess) = mime_guess::from_path(name).first() else {
         return false;
     };
-    guess == mime_guess::mime::APPLICATION_PDF || guess.type_() == mime_guess::mime::IMAGE
+    guess == mime_guess::mime::APPLICATION_PDF
+        || guess.type_() == mime_guess::mime::IMAGE
+        || guess.type_() == mime_guess::mime::AUDIO
+        || guess.type_() == mime_guess::mime::VIDEO
 }
 
 impl DirEntry {
