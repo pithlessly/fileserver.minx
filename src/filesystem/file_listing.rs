@@ -25,14 +25,13 @@ impl From<std::io::Error> for ServeFileListingError {
 pub fn serve_file_listing(
     state: &FilesystemState,
     rb: ResponseBuilder,
-    listing: bool,
     uri_path: &[u8],
     uri_path_lossy: &str,
     absolute_path: &Path,
 ) -> Result<Response, ServeFileListingError> {
     rb.ok().try_render("file_listing.html", || {
         use ServeFileListingError as E;
-        if !(listing && absolute_path.metadata()?.size() <= state.max_file_listing_size) {
+        if !(absolute_path.metadata()?.size() <= state.max_file_listing_size) {
             return Err(E::NoListing);
         }
         let mime = mime_guess::from_path(absolute_path).first_or_text_plain();

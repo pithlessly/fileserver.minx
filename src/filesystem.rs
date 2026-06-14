@@ -16,7 +16,6 @@ use crate::ResponseBuilder;
 use crate::Result;
 
 mod file_listing;
-use file_listing::{ServeFileListingError, serve_file_listing};
 
 /// Ensure that responses of type `application/pdf` have `content-disposition: inline` header set.
 /// Used as axum middleware via `axum::middleware::map_response`.
@@ -82,24 +81,43 @@ pub async fn filesystem(
         let is_root = absolute_path == *state.fs_root;
         serve_directory_listing(rb, &uri_path, uri_path_lossy, absolute_path, is_root)
     } else {
-        let result = serve_file_listing(
+        serve_file_or_listing(
             &state,
             rb,
             listing,
             &uri_path,
             uri_path_lossy,
             &absolute_path,
-        );
-        match result {
-            Ok(resp) => Ok(resp),
-            Err(ServeFileListingError::Io(e)) => Err(e.into()),
-            Err(ServeFileListingError::NoListing) => Ok(serve_file(&absolute_path, request).await),
-        }
+            request,
+        )
+        .await
     }
 }
 
 fn trim_suffix_if_present<'a, 'b>(haystack: &'a str, needle: &'b str) -> &'a str {
     haystack.strip_suffix(needle).unwrap_or(haystack)
+}
+
+async fn serve_file_or_listing(
+    state: &FilesystemState,
+    rb: ResponseBuilder<'_>,
+    listing: bool,
+    uri_path: &[u8],
+    uri_path_lossy: &str,
+    absolute_path: &Path,
+    request: Request,
+) -> Result<Response> {
+    use file_listing::ServeFileListingError as E;
+    let result = if listing {
+        file_listing::serve_file_listing(state, rb, uri_path, uri_path_lossy, absolute_path)
+    } else {
+        Err(E::NoListing)
+    };
+    match result {
+        Ok(resp) => Ok(resp),
+        Err(E::Io(e)) => Err(e.into()),
+        Err(E::NoListing) => Ok(serve_file(&absolute_path, request).await),
+    }
 }
 
 async fn serve_file(path: &Path, request: Request) -> Response {
