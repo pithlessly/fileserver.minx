@@ -202,9 +202,17 @@ fn is_definitely_a_binary_format(name: &str) -> bool {
 }
 
 impl DirEntry {
-    // order by name lexicographically, with directories first
-    fn order(&self) -> (bool, &str) {
-        (!self.is_dir, &self.name)
+    fn order(&self) -> (u8, &str) {
+        let priority = if self.is_dir {
+            2
+        } else if self.name == "index.html" {
+            0
+        } else if self.name.ends_with(".html") {
+            1
+        } else {
+            3
+        };
+        (priority, &self.name)
     }
 }
 
