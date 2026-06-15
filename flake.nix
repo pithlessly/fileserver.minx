@@ -14,11 +14,23 @@
   outputs = { self, nixpkgs, flake-utils, naersk, ... }:
     let
       overlay = final: prev:
-        let naersk' = final.callPackage naersk {}; in
-        {
-          minx-fileserver = naersk'.buildPackage {
+        let
+          naersk' = final.callPackage naersk {};
+          bin_derivation = naersk'.buildPackage {
             src = ./.;
           };
+        in
+        {
+          minx-fileserver =
+            final.symlinkJoin {
+              meta.mainProgram = "minx_fileserver";
+              name = "minx-fileserver";
+              paths = [ bin_derivation ]; # provides /bin
+              postBuild = ''
+                mkdir $out/share
+                cp -r ${./templates} ${./static} $out/share/
+              '';
+            };
         };
     in
     flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
