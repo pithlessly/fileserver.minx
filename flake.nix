@@ -15,8 +15,10 @@
     let
       overlay = final: prev:
         let naersk' = final.callPackage naersk {}; in
-        naersk'.buildPackage {
-          src = ./.;
+        {
+          minx-fileserver = naersk'.buildPackage {
+            src = ./.;
+          };
         };
     in
     flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
@@ -24,7 +26,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
       in
       {
-        packages.default = overlay pkgs pkgs;
+        packages.default = (overlay pkgs pkgs).minx-fileserver;
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = [
             pkgs.rustc
