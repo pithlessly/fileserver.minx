@@ -10,6 +10,11 @@
         <h1>Index of {{ uri_path_lossy }}/</h1>
         <hr>
         <table>
+            <colgroup>
+                <col style="width: auto;">
+                <col style="width: 13em;">
+                <col style="width: 6em;">
+            </colgroup>
             {% if not is_root %}
             <tr><td class="a"><a href="../?listing">../</a></td></tr>
             {% endif %}
