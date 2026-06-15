@@ -12,15 +12,19 @@
   };
 
   outputs = { self, nixpkgs, flake-utils, naersk, ... }:
+    let
+      overlay = final: prev:
+        let naersk' = final.callPackage naersk {}; in
+        naersk'.buildPackage {
+          src = ./.;
+        };
+    in
     flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        naersk' = pkgs.callPackage naersk {};
       in
       {
-        packages.default = naersk'.buildPackage {
-          src = ./.;
-        };
+        packages.default = overlay pkgs pkgs;
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = [
             pkgs.rustc
@@ -31,5 +35,7 @@
           ];
         };
       }
-    );
+    ) // {
+      overlays.default = overlay;
+    };
 }
