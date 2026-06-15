@@ -11,6 +11,5 @@ Planned features:
 
 - A more flexible "object store" style API under `/objects`
 - Generate redirects for symlinks (or maybe only certain ones)
-- Integration with notiondemotion (send PDF page count as a header)
 - Render markdown files with pandoc
 - Cache (in-memory) the results of syntax highlighting and pretty-printing
