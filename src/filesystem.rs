@@ -2,6 +2,7 @@ use axum::body::Body;
 use axum::extract::{Query, Request, State};
 use axum::http::{HeaderValue, Method, StatusCode, Uri, header};
 use axum::response::{IntoResponse as _, Response};
+use mime_guess::{Mime, mime};
 use tower_http::services::ServeFile;
 
 use std::borrow::Cow;
@@ -16,6 +17,7 @@ use crate::ResponseBuilder;
 use crate::Result;
 
 mod file_listing;
+mod pdf_page_count;
 
 /// Ensure that responses of type `application/pdf` have `content-disposition: inline` header set.
 /// Used as axum middleware via `axum::middleware::map_response`.
@@ -66,16 +68,16 @@ pub async fn filesystem(
     let uri_path_lossy = trim_suffix_if_present(&uri_path_lossy, "/");
     let absolute_path = match absolute_path.canonicalize() {
         Ok(p) => p,
-        Err(e) => return handle_io_error(rb, e, &uri_path_lossy),
+        Err(e) => return handle_io_error(rb, e, uri_path_lossy),
     };
     if !absolute_path.starts_with(&state.fs_root) {
-        return Ok(error_page(rb, StatusCode::NOT_FOUND, &uri_path_lossy));
+        return Ok(error_page(rb, StatusCode::NOT_FOUND, uri_path_lossy));
     }
     if absolute_path.is_dir() {
         if !listing {
             let index_html = absolute_path.join("index.html");
             if index_html.is_file() {
-                return Ok(serve_file(&index_html, request).await);
+                return Ok(serve_file(&index_html, request, &mime_guess::mime::TEXT_HTML).await);
             }
         }
         let is_root = absolute_path == *state.fs_root;
@@ -94,7 +96,7 @@ pub async fn filesystem(
     }
 }
 
-fn trim_suffix_if_present<'a, 'b>(haystack: &'a str, needle: &'b str) -> &'a str {
+fn trim_suffix_if_present<'a>(haystack: &'a str, needle: &str) -> &'a str {
     haystack.strip_suffix(needle).unwrap_or(haystack)
 }
 
@@ -108,22 +110,30 @@ async fn serve_file_or_listing(
     request: Request,
 ) -> Result<Response> {
     use file_listing::ServeFileListingError as E;
+    let mime = mime_guess::from_path(absolute_path).first_or_text_plain();
+    // eprintln!("{}, {:?}", absolute_path.display(), mime);
     let result = if listing {
-        file_listing::serve_file_listing(state, rb, uri_path, uri_path_lossy, absolute_path)
+        file_listing::serve_file_listing(state, rb, uri_path, uri_path_lossy, absolute_path, &mime)
     } else {
         Err(E::NoListing)
     };
     match result {
         Ok(resp) => Ok(resp),
         Err(E::Io(e)) => Err(e.into()),
-        Err(E::NoListing) => Ok(serve_file(&absolute_path, request).await),
+        Err(E::NoListing) => Ok(serve_file(absolute_path, request, &mime).await),
     }
 }
 
-async fn serve_file(path: &Path, request: Request) -> Response {
+async fn serve_file(path: &Path, request: Request, mime: &Mime) -> Response {
     use http_body_util::BodyExt as _;
     use tower::util::ServiceExt as _;
-    let Ok(response) = ServeFile::new(path).oneshot(request).await;
+    let pdf_page_count = if mime == &mime::APPLICATION_PDF {
+        pdf_page_count::pdf_page_count(path)
+    } else {
+        None
+    };
+    let Ok(mut response) = ServeFile::new(path).oneshot(request).await;
+    pdf_page_count::add_header(&mut response, pdf_page_count);
     response.map(|body| Body::new(body.boxed_unsync()))
 }
 
@@ -216,10 +226,10 @@ fn is_definitely_a_binary_format(name: &str) -> bool {
     let Some(guess) = mime_guess::from_path(name).first() else {
         return false;
     };
-    guess == mime_guess::mime::APPLICATION_PDF
-        || guess.type_() == mime_guess::mime::IMAGE
-        || guess.type_() == mime_guess::mime::AUDIO
-        || guess.type_() == mime_guess::mime::VIDEO
+    guess == mime::APPLICATION_PDF
+        || guess.type_() == mime::IMAGE
+        || guess.type_() == mime::AUDIO
+        || guess.type_() == mime::VIDEO
 }
 
 impl DirEntry {

@@ -1,4 +1,5 @@
 use axum::response::Response;
+use mime_guess::{Mime, mime};
 
 use std::os::unix::fs::MetadataExt as _; // Metadata::size
 use std::path::Path;
@@ -28,19 +29,18 @@ pub fn serve_file_listing(
     uri_path: &[u8],
     uri_path_lossy: &str,
     absolute_path: &Path,
+    mime: &Mime,
 ) -> Result<Response, ServeFileListingError> {
     rb.ok().try_render("file_listing.html", || {
         use ServeFileListingError as E;
         if !(absolute_path.metadata()?.size() <= state.max_file_listing_size) {
             return Err(E::NoListing);
         }
-        let mime = mime_guess::from_path(absolute_path).first_or_text_plain();
-        // eprintln!("{}, {:?}", absolute_path.display(), mime);
-        let is_textual = mime.type_() == mime_guess::mime::TEXT
-            || mime == "application/x-sh"
-            || mime == "application/vnd.lotus-screencam" // `.scm` is Scheme
-            || mime == "application/xml"
-            || mime == "image/svg+xml";
+        let is_textual = mime.type_() == mime::TEXT
+            || mime == &"application/x-sh"
+            || mime == &"application/vnd.lotus-screencam" // `.scm` is Scheme
+            || mime == &"application/xml"
+            || mime == &"image/svg+xml";
         if !is_textual {
             return Err(E::NoListing);
         }

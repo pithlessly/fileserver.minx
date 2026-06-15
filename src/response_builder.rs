@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 
 use axum::body::Body;
-use axum::http::{self, HeaderName, HeaderValue, StatusCode, header as h};
+use axum::http::{self, HeaderName, HeaderValue, StatusCode, header};
 use axum::response::Response;
 
 /// Wrapper around `http::response::Builder()` that can be configured to not actually construct the
@@ -56,7 +56,7 @@ impl<'a> ResponseBuilderWithStatus<'a> {
         V: TryInto<HeaderValue>,
         <V as TryInto<HeaderValue>>::Error: Into<http::Error>,
     {
-        self.header(h::CONTENT_TYPE, value)
+        self.header(header::CONTENT_TYPE, value)
     }
 
     pub fn content_type_html(self) -> Self {
