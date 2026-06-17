@@ -28,7 +28,8 @@
               paths = [ bin_derivation ]; # provides /bin
               postBuild = ''
                 mkdir $out/share
-                cp -r ${./templates} ${./static} $out/share/
+                cp -r ${./templates} $out/share/templates
+                cp -r ${./static} $out/share/static
               '';
             };
         };
